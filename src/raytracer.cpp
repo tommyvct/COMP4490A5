@@ -19,6 +19,8 @@ const char* PATH = "scenes/";
 double fov = 60;
 colour3 background_colour(0, 0, 0);
 
+
+
 json jscene;
 Scene scene;
 
@@ -70,22 +72,113 @@ void choose_scene(char const* fn) {
     background_colour = scene.camera.background;
 }
 
-bool trace(const point3& e, const point3& s, colour3& colour, bool pick) {
+bool trace(const point3& eye, const point3& screen, colour3& colour, bool pick)
+{
     // TODO: NOTE: This is a demo, not ray tracing code! You will need to replace all of this with your own code...
+    
+    // TODO: rank by distance, select the shortest one
+    // TODO: if pick, print more info
 
+    auto d = screen - eye;
     // traverse the objects
-    for (auto&& object : scene.objects) {
-        if (object->type == "sphere") {
+    for (auto&& object : scene.objects)
+    {
+        if (object->type == "sphere")
+        {
             Sphere* sphere = (Sphere*)(object);
-            point3& pos = sphere->position;
-            point3 p = -(s - e) * pos[2];
-            if (glm::length(glm::vec3(p.x - pos[0], p.y - pos[1], 0)) < sphere->radius) {
-                Material& material = object->material;
-                colour = material.diffuse;
-                // This is NOT correct: it finds the first hit, not the closest
-                return true;
+            point3& centre = sphere->position;
+            
+            auto eye2centre = eye - centre;
+            auto discriminant = pow(glm::dot(d, eye2centre), 2) - glm::dot(d, d) * (glm::dot(eye2centre, eye2centre) - sphere->radius * sphere->radius);
+            
+            if (discriminant < -epsilon)  // negative, no intersection
+            {
+                continue;
+            }
+            else if ((discriminant) < epsilon)  // zero, one intersection
+            {
+                auto intersectionT = (glm::dot(-d, eye2centre) + sqrt(discriminant)) / glm::dot(d, d);
+                continue;
+            }
+            else  // positive, 2 intersections
+            {
+                auto intersectionT1 = (glm::dot(-d, eye2centre) + sqrt(discriminant)) / glm::dot(d, d);
+                auto intersectionT2 = (glm::dot(-d, eye2centre) + sqrt(discriminant)) / glm::dot(d, d);
+                // TODO: which one is closer?
+                continue;
+            }
+//            point3 p = -(screen - eye) * pos[2];
+//            if (glm::length(glm::vec3(p.x - pos[0], p.y - pos[1], 0)) < sphere->radius)
+            
+
+        }
+        else if (object->type == "plane")
+        {
+            Plane* plane = (Plane*)(object);
+            point3& position = plane->position;
+            point3& normal = plane->normal;
+            
+            auto test = glm::dot(normal, d);
+            if (!zero(abs(test)))
+            {
+                auto intersectionT = glm::dot(normal, (position - eye)) / test;
+                if (test < 0)  // front side
+                {
+                    
+                }
+                else // (test > 0) back side
+                {
+                    
+                }
             }
         }
+        else if (object->type == "triangle")
+        {
+            Triangle* triangle = (Triangle*)(object);
+            Vertex& a = triangle->vertices[0];
+            Vertex& b = triangle->vertices[1];
+            Vertex& c = triangle->vertices[2];
+            
+            auto normal = glm::cross((c - b), (b - a));
+            auto trianglePlaneTest = glm::dot(normal, a);
+            if (abs(trianglePlaneTest) < epsilon)
+            {
+                continue;
+            }
+            auto intersectionT = glm::dot(normal, (a - eye)) / trianglePlaneTest;
+            auto intersection = eye + intersectionT * d;
+            std::vector<double> barycentric =
+            {
+                glm::dot(glm::cross((b-a), (intersection - a)), normal),
+                glm::dot(glm::cross((c-b), (intersection - b)), normal),
+                glm::dot(glm::cross((a-c), (intersection - c)), normal)
+            };
+            
+            if
+            (!(
+                !zero(barycentric[0]) &
+                !zero(barycentric[1]) &
+                !zero(barycentric[2]) &
+                !(
+                    barycentric[0] < 0 ^
+                    barycentric[1] < 0 ^
+                    barycentric[2] < 0
+                )
+            ))
+            {
+                continue;
+            }
+            // TODO: found the intersection
+
+        }
+        else if (object->type == "mesh")
+        {
+            
+        }
+        
+        // TODO: calculate illumination here
+        Material& material = object->material;
+        colour = material.diffuse;
     }
 
     return false;

@@ -124,6 +124,13 @@ struct Scene {
   std::vector<Light*> lights;
 };
 
+const double epsilon = 0.0000001;
+
+inline bool zero(double to_test, double precision = epsilon)
+{
+    return abs(to_test) < epsilon;
+}
+
 /*** The following is c.json hard-coded using this schema ***/
 
 /*
