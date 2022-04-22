@@ -44,7 +44,7 @@ link_libraries(${OPENGL_opengl_LIBRARY})
 link_libraries(${GLUT_LIBRARY})
 link_libraries(${GLEW_LIBRARIES})
 
-find_package(OpenMP)
+find_package(OpenMP 5.0)
 
 # Targets
 add_executable(Assignment5 
