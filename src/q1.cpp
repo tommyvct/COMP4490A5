@@ -8,6 +8,7 @@
 #include <iostream>
 #define M_PI 3.14159265358979323846264338327950288
 #include <cmath>
+#include <utility>
 
 #include <glm/glm.hpp>
 
@@ -101,10 +102,12 @@ void display( void ) {
 		// only recalculate if this is a new scanline
 		if (drawing_y == int(drawing_y)) {
 
+#ifdef _OPENMP
+#pragma omp parallel for
+#endif
 			for (int x = 0; x < vp_width; x++) {
-				if (!trace(eye, s(x, y), texture[x], false)) {
-					texture[x] = background_colour;
-				}
+			    const auto trace_result = trace(eye, s(x, y), false);
+				texture[x] = std::get<0>(trace_result) ? std::get<1>(trace_result) : background_colour;
 			}
 
 			// to ensure a power-of-two texture, get the next highest power of two
@@ -156,10 +159,11 @@ void mouse( int button, int state, int x, int y ) {
 	if ( state == GLUT_DOWN ) {
 		switch( button ) {
 		case GLUT_LEFT_BUTTON:
-			colour3 c;
 			point3 uvw = s(x, y);
 			std::cout << std::endl;
-			if (trace(eye, uvw, c, true)) {
+			const auto trace_result = trace(eye, uvw, true);
+			const auto c = std::get<1>(trace_result);
+			if (std::get<0>(trace_result)) {
 				std::cout << "HIT @ ( " << uvw.x << "," << uvw.y << "," << uvw.z << " )\n";
 				std::cout << "      colour = ( " << c.r << "," << c.g << "," << c.b << " )\n";
 			} else {
