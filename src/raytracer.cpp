@@ -88,7 +88,9 @@ std::pair<bool, colour3> trace(const point3& from, const point3& to, bool pick, 
         return std::make_pair(false, RGB());
     }
 
-    auto intersection_tuple = intersect_next_t(from, to, pick, 1.0);
+
+    //intersection
+    auto intersection_tuple = intersect_next_t(from, to, pick, epsilon);
 
     Object* best = std::get<0>(intersection_tuple);
     if (!best)
@@ -150,13 +152,6 @@ std::pair<bool, colour3> trace(const point3& from, const point3& to, bool pick, 
             break;
         }
 
-        // TODO: rework needed
-        //if (light_type == point && !std::get<0>(trace(best_intersection, best_intersection + ray_direction * (float)epsilon, false, -1)) ||
-        //    light_type == spot && acos(glm::dot(ray_direction, glm::normalize(((SpotLight*)light)->direction))) < glm::radians(((SpotLight*)light)->cutoff))
-        //{
-        //    continue;
-        //}
-
         auto obstacle = intersect_next_t(best_intersection, best_intersection + ray_direction);
         if (std::get<0>(obstacle) != nullptr)
         {
@@ -187,61 +182,18 @@ std::pair<bool, colour3> trace(const point3& from, const point3& to, bool pick, 
 
         //while(out_colour_lock) {}  // NOLINT(bugprone-infinite-loop)
         //out_colour_lock = true;
-        //out_colour.r += light->color.r * best->material.diffuse.r * diffuse;
-        //out_colour.g += light->color.g * best->material.diffuse.g * diffuse;
-        //out_colour.b += light->color.b * best->material.diffuse.b * diffuse;
-        //out_colour.r += light->color.r * best->material.specular.r * specular;
-        //out_colour.g += light->color.g * best->material.specular.g * specular;
-        //out_colour.b += light->color.b * best->material.specular.b * specular;
         out_colour += light->color * best->material.diffuse * diffuse;
         out_colour += light->color * best->material.specular * specular;
         //out_colour_lock = false;
     }
 
     // TODO: transmissive and refraction
-    /*
-    auto normalize_d = glm::normalize(d);
-    auto normalize_reflect = glm::normalize(glm::reflect(normalize_d, best_normal));
-    //auto normalize_refract = glm::normalize(glm::refract(normalize_d, best_normal, best->material.refraction));
-    if (pick)
-    {
-    using std::cout;
-    using std::endl;
-    cout << "d = (" << normalize_d.x << ", " << normalize_d.y << ", " << normalize_d.z << ")" << endl;
-    cout << "N = (" << best_normal.x << ", " << best_normal.y << ", " << best_normal.z << ")" << endl;
-    cout << "reflect = (" << normalize_reflect.x << ", " << normalize_reflect.y << ", " << normalize_reflect.z << ")" << endl;
-    //cout << "refract = (" << normalize_refract.x << ", " << normalize_refract.y << ", " << normalize_refract.z << ") with refraction index of " << best->material.refraction << endl;
-    }
-    best_intersection.x += best_normal.x * 100*epsilon;
-    best_intersection.y += best_normal.y * 100*epsilon;
-    best_intersection.z += best_normal.z * 100*epsilon;
-    auto reflection = trace(best_intersection, normalize_reflect, false, illumination_calculation_recursive_depth - 1);
-    //auto refraction = trace(best_intersection, normalize_refract, false, illumination_calculation_recursive_depth - 1);
-    //if (pick && std::get<0>(refraction))
-    //{
-    //    std::cout << "refraction worked" << std::endl;
-    //}
-    if (pick && std::get<0>(reflection))
-    {
-    std::cout << "reflection worked, reflectRGB = (";
-    std::cout << best->material.reflective.r * std::get<1>(reflection).r << ", ";
-    std::cout << best->material.reflective.g * std::get<1>(reflection).g << ", ";
-    std::cout << best->material.reflective.b * std::get<1>(reflection).b;
-    std::cout << ")" << std::endl;
-    }
+    auto r = glm::reflect(glm::normalize(best_intersection - from), best_normal);
+    auto reflection = trace(best_intersection, best_intersection + r, pick, illumination_calculation_recursive_depth - 1);
     if (std::get<0>(reflection))
     {
-    out_colour.r += best->material.reflective.r * std::get<1>(reflection).r;
-    out_colour.g += best->material.reflective.g * std::get<1>(reflection).g;
-    out_colour.b += best->material.reflective.b * std::get<1>(reflection).b;
+        out_colour += best->material.reflective * std::get<1>(reflection);
     }
-    //if (std::get<0>(refraction))
-    //{
-    //    //out_colour.r += best->material.refraction.r * std::get<1>(refraction).r;
-    //    //out_colour.g += best->material.refraction.g * std::get<1>(refraction).g;
-    //    //out_colour.b += best->material.refraction.b * std::get<1>(refraction).b;
-    //}
-    */
 
 
     return std::make_pair(best != nullptr, out_colour);
@@ -325,50 +277,6 @@ std::tuple<Object*, float, glm::vec3> intersect_next_t(const point3& from, const
                 best_normal = normal;
             }
         }
-        //else if (object->type == "triangle")
-        //{
-        //    auto triangle = (Triangle*)(object);
-        //    Vertex& a = triangle->vertices[0];
-        //    Vertex& b = triangle->vertices[1];
-        //    Vertex& c = triangle->vertices[2];
-        //    
-        //    auto normal = glm::normalize(glm::cross((c - b), (b - a)));
-        //    auto triangle_plane_test = glm::dot(normal, a);
-        //    if (abs(triangle_plane_test) < epsilon)
-        //    {
-        //        continue;
-        //    }
-        //    auto intersection_t = glm::dot(normal, (a - from)) / triangle_plane_test;
-        //    auto intersection = from + intersection_t * d;
-        //    std::vector<double> barycentric =
-        //    {
-        //        glm::dot(glm::cross((b-a), (intersection - a)), normal),
-        //        glm::dot(glm::cross((c-b), (intersection - b)), normal),
-        //        glm::dot(glm::cross((a-c), (intersection - c)), normal)
-        //    };
-        //    
-        //    if
-        //    (
-        //        !zero(barycentric[0]) &&
-        //        !zero(barycentric[1]) &&
-        //        !zero(barycentric[2]) &&
-        //        !(
-        //            barycentric[0] < 0 ^
-        //            barycentric[1] < 0 ^
-        //            barycentric[2] < 0 
-        //        )
-        //    )
-        //    {
-        //        if (intersection_t < cutoff || intersection_t > best_t)
-        //        {
-        //            continue;
-        //        }
-        //
-        //        best = object;
-        //        best_t = intersection_t;
-        //        best_normal = normal;
-        //    }
-        //}
         else if (object->type == "mesh")
         {
             auto mesh = (Mesh*)object;
