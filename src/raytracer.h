@@ -11,4 +11,5 @@ extern colour3 background_colour;
 
 void choose_scene(char const *fn);
 std::pair<bool, colour3> trace(const point3 &from, const point3 &to, Object *exclude = nullptr, bool pick = false, int recursive_depth = 6);
-std::tuple<Object *, float, glm::vec3> intersect_next_t(const point3 &from, const point3 &to, Object *exclude = nullptr, bool pick = false, float start_t = epsilon);
+std::tuple<Object *, float, glm::vec3>
+intersect_next_t(const point3 &from, const point3 &to, Object *exclude = nullptr, Object *only = nullptr, bool pick = false, float start_t = epsilon);

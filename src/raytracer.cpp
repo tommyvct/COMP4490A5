@@ -90,7 +90,7 @@ std::pair<bool, colour3> trace(const point3& from, const point3& to, Object* exc
 
 
     //intersection
-    auto intersection_tuple = intersect_next_t(from, to, nullptr, pick, epsilon);
+    auto intersection_tuple = intersect_next_t(from, to, nullptr, nullptr, pick, epsilon);
 
     Object* best = std::get<0>(intersection_tuple);
     if (!best)
@@ -152,7 +152,8 @@ std::pair<bool, colour3> trace(const point3& from, const point3& to, Object* exc
             break;
         }
 
-        auto obstacle = intersect_next_t(best_intersection, best_intersection + ray_direction, nullptr);
+        auto obstacle = intersect_next_t(best_intersection, best_intersection + ray_direction, nullptr, nullptr, false,
+                                         0);
         if (std::get<0>(obstacle) != nullptr)
         {
             if (light_type == directional)
@@ -210,7 +211,8 @@ std::pair<bool, colour3> trace(const point3& from, const point3& to, Object* exc
     if (!zero(best->material.refraction) && do_refraction)
     {
         auto refract = glm::refract(glm::normalize(best_intersection - from), best_normal, 1/best->material.refraction);
-        auto next_t = intersect_next_t(best_intersection, best_intersection + refract, nullptr, pick, -epsilon);
+        auto next_t = intersect_next_t(best_intersection, best_intersection + refract, nullptr, best, pick,
+                                       -epsilon);
         if (pick)
         {
             std::cout << "refraction object " << ((std::get<0>(next_t) == best) ? "match" : "mismatch") << std::endl;
@@ -242,7 +244,8 @@ std::pair<bool, colour3> trace(const point3& from, const point3& to, Object* exc
     return std::make_pair(true, out_colour);
 }
 
-std::tuple<Object *, float, glm::vec3> intersect_next_t(const point3 &from, const point3 &to, Object *exclude, bool pick, float start_t)
+std::tuple<Object *, float, glm::vec3>
+intersect_next_t(const point3 &from, const point3 &to, Object *exclude, Object *only, bool pick, float start_t)
 {
     Object* best = nullptr;
     float best_t = 99999999.0f;
@@ -256,6 +259,10 @@ std::tuple<Object *, float, glm::vec3> intersect_next_t(const point3 &from, cons
 #endif
     for (auto&& object : scene.objects)
     {
+        if (only && object != only)
+        {
+            continue;
+        }
         if (object == exclude)
         {
             continue;
@@ -282,11 +289,11 @@ std::tuple<Object *, float, glm::vec3> intersect_next_t(const point3 &from, cons
             {
                 float intersection_t1 = (glm::dot(-d, eye2centre) + sqrt(discriminant)) / glm::dot(d, d);
                 float intersection_t2 = (glm::dot(-d, eye2centre) - sqrt(discriminant)) / glm::dot(d, d);
-                intersection_t1 = intersection_t1 < start_t ? 999999.0f : intersection_t1;
-                intersection_t2 = intersection_t2 < start_t ? 999999.0f : intersection_t2;
+//                intersection_t1 = intersection_t1 < start_t ? 999999.0f : intersection_t1;
+//                intersection_t2 = intersection_t2 < start_t ? 999999.0f : intersection_t2;
                 intersection_t = std::min(intersection_t1, intersection_t2);
-                if (intersection_t1 == intersection_t2 && intersection_t1 == 999999.0f)
-                    continue;
+//                if (intersection_t1 == intersection_t2 && intersection_t1 == 999999.0f)
+//                    continue;
             }
 
             if (intersection_t < start_t || intersection_t > best_t)
