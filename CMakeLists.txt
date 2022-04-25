@@ -41,7 +41,7 @@ include_directories(${GLUT_INCLUDE_DIR})
 include_directories(${GLEW_INCLUDE_DIR})
 
 link_libraries(${OPENGL_opengl_LIBRARY})
-link_libraries(${GLUT_LIBRARY})
+link_libraries(${GLUT_LIBRARIES})
 link_libraries(${GLEW_LIBRARIES})
 
 find_package(OpenMP)

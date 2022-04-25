@@ -178,7 +178,7 @@ std::pair<bool, colour3> trace(const point3& from, const point3& to, bool pick, 
         auto diffuse = std::max(glm::dot(best_normal, ray_direction), 0.0f) * attenuation;
         auto r = glm::reflect(ray_direction, best_normal);
         auto v = glm::normalize(d);
-        auto specular = pow(std::max(glm::dot(r, v), 0.0f), best->material.shininess) * attenuation;
+        float specular = pow(std::max(glm::dot(r, v), 0.0f), best->material.shininess) * attenuation;
 
         //while(out_colour_lock) {}  // NOLINT(bugprone-infinite-loop)
         //out_colour_lock = true;
@@ -252,7 +252,7 @@ std::tuple<Object*, float, glm::vec3> intersect_next_t(const point3& from, const
         {
             auto plane = (Plane*)(object);
             point3& position = plane->position;
-            point3& normal = glm::normalize(plane->normal);
+            point3 normal = glm::normalize(plane->normal);
 
             auto test = glm::dot(normal, d);
             if (!zero(test))
