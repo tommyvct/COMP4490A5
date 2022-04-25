@@ -3,6 +3,8 @@ project(COMP4490A5)
 
 set(CMAKE_CXX_STANDARD 11)
 
+option(OPENMP "Use OpenMP acceleration" ON)
+
 # Dependencies
 include_directories("./glm")
 
@@ -44,17 +46,19 @@ link_libraries(${OPENGL_opengl_LIBRARY})
 link_libraries(${GLUT_LIBRARIES})
 link_libraries(${GLEW_LIBRARIES})
 
-find_package(OpenMP)
-
 # Targets
-add_executable(Assignment5 
-    src/main.cpp 
+add_executable(Assignment5
+    src/main.cpp
     src/q1.cpp
     src/raytracer.cpp
     src/json2scene.cpp)
 
-if(OpenMP_CXX_FOUND)
-    target_link_libraries(Assignment5 PUBLIC OpenMP::OpenMP_CXX)
+if(OPENMP)
+    find_package(OpenMP)
+
+    if(OpenMP_CXX_FOUND)
+        target_link_libraries(Assignment5 PUBLIC OpenMP::OpenMP_CXX)
+    endif()
 endif()
 
 # Debugging
