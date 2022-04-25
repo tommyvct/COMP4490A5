@@ -81,7 +81,7 @@ void choose_scene(char const* fn) {
  * \param illumination_calculation_recursive_depth illumination recursion counter, 0 is the base case
  * \return a pair of\code bool\endcode and\code glm::vec3\endcode object representing calculated illumination colour.
  */
-std::pair<bool, colour3> trace(const point3& from, const point3& to, bool pick, int illumination_calculation_recursive_depth)
+std::pair<bool, colour3> trace(const point3& from, const point3& to, Object* exclude, bool pick, int illumination_calculation_recursive_depth)
 {
     if (illumination_calculation_recursive_depth <= 0)
     {
@@ -90,7 +90,7 @@ std::pair<bool, colour3> trace(const point3& from, const point3& to, bool pick, 
 
 
     //intersection
-    auto intersection_tuple = intersect_next_t(from, to, pick, epsilon);
+    auto intersection_tuple = intersect_next_t(from, to, nullptr, pick, epsilon);
 
     Object* best = std::get<0>(intersection_tuple);
     if (!best)
@@ -101,7 +101,7 @@ std::pair<bool, colour3> trace(const point3& from, const point3& to, bool pick, 
     float best_t = std::get<1>(intersection_tuple);
     glm::vec3 best_normal = std::get<2>(intersection_tuple);
     const auto d = to - from;
-    auto best_intersection = from + d * best_t + best_normal * epsilon;
+    auto best_intersection = from + d * best_t + best_normal * 50.0f * epsilon;
 
 
     // illumination
@@ -152,7 +152,7 @@ std::pair<bool, colour3> trace(const point3& from, const point3& to, bool pick, 
             break;
         }
 
-        auto obstacle = intersect_next_t(best_intersection, best_intersection + ray_direction);
+        auto obstacle = intersect_next_t(best_intersection, best_intersection + ray_direction, nullptr);
         if (std::get<0>(obstacle) != nullptr)
         {
             if (light_type == directional)
@@ -174,8 +174,8 @@ std::pair<bool, colour3> trace(const point3& from, const point3& to, bool pick, 
         }
 
         auto d_length = glm::length(d);
-        auto attenuation = 1;// / (1 + 0.1*d_length + 0.2*d_length*d_length);
-        auto diffuse = std::max(glm::dot(best_normal, ray_direction), 0.0f) * attenuation;
+        auto attenuation = 1 / (1 + 0.1*d_length + 0.2*d_length*d_length);
+        float diffuse = std::max(glm::dot(best_normal, ray_direction), 0.0f) * attenuation;
         auto r = glm::reflect(ray_direction, best_normal);
         auto v = glm::normalize(d);
         float specular = pow(std::max(glm::dot(r, v), 0.0f), best->material.shininess) * attenuation;
@@ -187,19 +187,62 @@ std::pair<bool, colour3> trace(const point3& from, const point3& to, bool pick, 
         //out_colour_lock = false;
     }
 
-    // TODO: transmissive and refraction
-    auto r = glm::reflect(glm::normalize(best_intersection - from), best_normal);
-    auto reflection = trace(best_intersection, best_intersection + r, pick, illumination_calculation_recursive_depth - 1);
+    auto reflect = glm::reflect(glm::normalize(best_intersection - from), best_normal);
+    auto reflection = trace(best_intersection, best_intersection + reflect, nullptr, pick, illumination_calculation_recursive_depth - 1);
+    bool do_refraction = true;
     if (std::get<0>(reflection))
     {
-        out_colour += best->material.reflective * std::get<1>(reflection);
+
+        auto test = 1 - pow((1/best->material.refraction), 2) * (1 - pow(glm::dot(best_intersection - from, best_normal), 2));
+        if (best->material.refraction != 0.0f && test >= 0.0f)
+        {
+            out_colour += std::get<1>(reflection);
+            do_refraction = false;
+        }
+        else
+        {
+            out_colour += best->material.reflective * std::get<1>(reflection);
+        }
     }
 
+    best_intersection -= 100.0f * best_normal * epsilon;
 
-    return std::make_pair(best != nullptr, out_colour);
+    if (!zero(best->material.refraction) && do_refraction)
+    {
+        auto refract = glm::refract(glm::normalize(best_intersection - from), best_normal, 1/best->material.refraction);
+        auto next_t = intersect_next_t(best_intersection, best_intersection + refract, nullptr, pick, -epsilon);
+        if (pick)
+        {
+            std::cout << "refraction object " << ((std::get<0>(next_t) == best) ? "match" : "mismatch") << std::endl;
+        }
+        if (std::get<0>(next_t) == best)
+        {
+            auto refraction_exit = best_intersection + std::get<1>(next_t) * (best_intersection + refract) + std::get<2>(next_t) * 100.0f * epsilon;
+            auto refraction = trace(refraction_exit, refraction_exit + glm::normalize(best_intersection - from), best, pick, illumination_calculation_recursive_depth - 1);
+            if (pick)
+            {
+                std::cout << "refraction = ( " << std::get<1>(refraction).r << ", " << std::get<1>(refraction).g << ", " << std::get<1>(refraction).b <<  ")" << std::endl;
+            }
+            if (std::get<0>(refraction))
+            {
+                out_colour = ((glm::vec3(1, 1, 1) - best->material.transmissive) * out_colour) + (best->material.transmissive * std::get<1>(refraction));
+            }
+        }
+    }
+    else
+    {
+        auto transmit = best_intersection + glm::normalize(d) +  best_normal * epsilon;
+        auto transmission = trace(best_intersection, transmit, best, pick, illumination_calculation_recursive_depth - 1);
+        glm::vec3 fuck1 = ((glm::vec3(1, 1, 1) - best->material.transmissive) * out_colour);
+        glm::vec3 fuck2 = (best->material.transmissive * std::get<1>(transmission));
+        out_colour = fuck1 + fuck2;
+//        out_colour += ;
+    }
+
+    return std::make_pair(true, out_colour);
 }
 
-std::tuple<Object*, float, glm::vec3> intersect_next_t(const point3& from, const point3& to, bool pick, float start_t)
+std::tuple<Object *, float, glm::vec3> intersect_next_t(const point3 &from, const point3 &to, Object *exclude, bool pick, float start_t)
 {
     Object* best = nullptr;
     float best_t = 99999999.0f;
@@ -213,6 +256,11 @@ std::tuple<Object*, float, glm::vec3> intersect_next_t(const point3& from, const
 #endif
     for (auto&& object : scene.objects)
     {
+        if (object == exclude)
+        {
+            continue;
+        }
+
         if (object->type == "sphere")
         {
             auto sphere = (Sphere*)(object);
@@ -234,7 +282,11 @@ std::tuple<Object*, float, glm::vec3> intersect_next_t(const point3& from, const
             {
                 float intersection_t1 = (glm::dot(-d, eye2centre) + sqrt(discriminant)) / glm::dot(d, d);
                 float intersection_t2 = (glm::dot(-d, eye2centre) - sqrt(discriminant)) / glm::dot(d, d);
+                intersection_t1 = intersection_t1 < start_t ? 999999.0f : intersection_t1;
+                intersection_t2 = intersection_t2 < start_t ? 999999.0f : intersection_t2;
                 intersection_t = std::min(intersection_t1, intersection_t2);
+                if (intersection_t1 == intersection_t2 && intersection_t1 == 999999.0f)
+                    continue;
             }
 
             if (intersection_t < start_t || intersection_t > best_t)
@@ -303,11 +355,11 @@ std::tuple<Object*, float, glm::vec3> intersect_next_t(const point3& from, const
                 };
 
                 if
-                    (
+                (
                         barycentric[0] < -epsilon &&
                         barycentric[1] < -epsilon &&
                         barycentric[2] < -epsilon
-                        )
+                )
                 {
                     if (intersection_t < start_t || intersection_t > best_t)
                     {
@@ -316,7 +368,7 @@ std::tuple<Object*, float, glm::vec3> intersect_next_t(const point3& from, const
 
                     best = object;
                     best_t = intersection_t;
-                    best_normal = -normal;
+                    best_normal = -normal;//barycentric[0] < -epsilon ? -normal : normal;
                 }
             }
         }

@@ -106,7 +106,7 @@ void display( void ) {
 #pragma omp parallel for
 #endif
 			for (int x = 0; x < vp_width; x++) {
-			    const auto trace_result = trace(eye, s(x, y), false);
+			    const auto trace_result = trace(eye, s(x, y));
 				texture[x] = std::get<0>(trace_result) ? std::get<1>(trace_result) : background_colour;
 			}
 
@@ -161,7 +161,7 @@ void mouse( int button, int state, int x, int y ) {
 		case GLUT_LEFT_BUTTON:
 			point3 uvw = s(x, y);
 			std::cout << std::endl;
-			const auto trace_result = trace(eye, uvw, true);
+			const auto trace_result = trace(eye, uvw, nullptr, true);
 			const auto c = std::get<1>(trace_result);
 			if (std::get<0>(trace_result)) {
 				std::cout << "HIT @ ( " << uvw.x << "," << uvw.y << "," << uvw.z << " )\n";
