@@ -117,10 +117,10 @@ std::pair<bool, colour3> trace(const point3& from, const point3& to, Object* exc
         enum _light_type { point, spot, directional } light_type{};
         if (light->type == "ambient")
         {
-            //while(out_colour_lock) {}  // NOLINT(bugprone-infinite-loop)
-            //out_colour_lock = true;
+            while(out_colour_lock) {}  // NOLINT(bugprone-infinite-loop)
+            out_colour_lock = true;
             out_colour += light->color * best->material.ambient;
-            //out_colour_lock = false;
+            out_colour_lock = false;
             continue;
         }
 
@@ -181,11 +181,11 @@ std::pair<bool, colour3> trace(const point3& from, const point3& to, Object* exc
         auto v = glm::normalize(d);
         float specular = pow(std::max(glm::dot(r, v), 0.0f), best->material.shininess) * attenuation;
 
-        //while(out_colour_lock) {}  // NOLINT(bugprone-infinite-loop)
-        //out_colour_lock = true;
+        while(out_colour_lock) {}  // NOLINT(bugprone-infinite-loop)
+        out_colour_lock = true;
         out_colour += light->color * best->material.diffuse * diffuse;
         out_colour += light->color * best->material.specular * specular;
-        //out_colour_lock = false;
+        out_colour_lock = false;
     }
 
     auto reflect = glm::reflect(glm::normalize(best_intersection - from), best_normal);
@@ -197,6 +197,10 @@ std::pair<bool, colour3> trace(const point3& from, const point3& to, Object* exc
         auto test = 1 - pow((1/best->material.refraction), 2) * (1 - pow(glm::dot(best_intersection - from, best_normal), 2));
         if (best->material.refraction != 0.0f && test >= 0.0f)
         {
+            if (pick)
+            {
+                std::cout << "full reflection instead of refraction" << std::endl;
+            }
             out_colour += std::get<1>(reflection);
             do_refraction = false;
         }
@@ -233,12 +237,13 @@ std::pair<bool, colour3> trace(const point3& from, const point3& to, Object* exc
     }
     else
     {
+        if (pick)
+        {
+            std::cout << "reflection" << std::endl;
+        }
         auto transmit = best_intersection + glm::normalize(d) +  best_normal * epsilon;
         auto transmission = trace(best_intersection, transmit, best, pick, illumination_calculation_recursive_depth - 1);
-        glm::vec3 fuck1 = ((glm::vec3(1, 1, 1) - best->material.transmissive) * out_colour);
-        glm::vec3 fuck2 = (best->material.transmissive * std::get<1>(transmission));
-        out_colour = fuck1 + fuck2;
-//        out_colour += ;
+        out_colour = ((glm::vec3(1, 1, 1) - best->material.transmissive) * out_colour) + (best->material.transmissive * std::get<1>(transmission));
     }
 
     return std::make_pair(true, out_colour);

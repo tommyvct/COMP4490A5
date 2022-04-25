@@ -1,39 +1,25 @@
-# COMP4490 CMake Template
+# COMP4490 Assignment 5
+Tested on openSUSE Tumbleweed with clang14. 
 
 ## Structure
 - `glsl/`: GLSL shader codes
 - `src/`: C++ source codes
+- `img/`: screenshots
 
 The rests are dependencies.
 
 
-## Modify `CMakeLists.txt` for Assignments
-Each `add_executable` directive produces one binary, or a "Project" in Visual Studio. The first parameter is the executable name, and the subsequent parameters are source codes to be compiled and linked together.
-
-For assignment use, modify the executable and your C++ code file name like this:
-
-```cmake
-add_executable(Assignment1  # target name
-    src/main.cpp         
-    src/assignment1.cpp)    # your C++ code filename
-```
-
-You can have multiple targets by duplicating target then changing target name and file names.
-
-To enable debugging on these targets on Visual Studio or Xcode, duplicate the working properties and change the target name accordingly:
-```cmake
-if (WIN32)
-    set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT example0)
-    set_property(TARGET Assignment1
-        PROPERTY VS_DEBUGGER_WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/glsl")
-elseif (APPLE)
-    set_property(TARGET Assignment1 
-        PROPERTY XCODE_SCHEME_WORKING_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/glsl")
-endif()
-```
-
-If using Ninja or Makefile as generator, regardless of IDE or editor you are using, please make sure the working directory is set to the `glsl/` directory before debugging and running.
-
+## Features
+### Completed
+- Intersection tests for spheres, planes, and triangles (meshes). (May have bug)
+- Lighting calculated using Phong reflection (Phong specular + Lambertian diffuse).
+- Ambient, point, directional, and spot lights.
+- Shadow testing. (Have bug)
+- Mirror reflection and transparency
+### Partially Completed
+- refraction and total internal reflection (very buggy)
+### Not Implemented
+- 2 extra scene
 
 
 ## Build instructions
@@ -48,14 +34,18 @@ cmake --build .
 To run the compiled executables:
 ```bash
 # change to glsl directory 
-cd ../glsl
+cd ../
 # run the executable from here
-../build/example0
+../build/Assignment5
 ```
 
+### OpenMP Acceleration
+OpenMP acceleration can be turned off by passing `-DOPENMP=OFF` to CMake.
+It may cause render artifacts.
+
 ### Windows Specific
-- If using Visual Studio, `-A"Win32"` is required since the bundled libraries are 32-bit.
-- Make sure the the startup project is assigned to a project other `ALL_BUILD` and `ZERO_CHECK`.
+- The dependencies have been upgraded to 64-bit
+- Make sure the startup project is assigned to a project other `ALL_BUILD` and `ZERO_CHECK`.
 
 ### macOS Specific
 CMake cannot set the working directory for Xcode debugging. To manually set the working directory for debugging, go to `Product` -> `Scheme` -> `Edit Scheme`, under `Options` tab, tick `Use custom working directory` and set it to where the GLSL shaders are.
