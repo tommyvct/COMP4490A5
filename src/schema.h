@@ -124,7 +124,7 @@ struct Scene {
   std::vector<Light*> lights;
 };
 
-const double epsilon = 0.0000001;
+const float epsilon = 0.00001;
 
 inline bool zero(double to_test, double precision = epsilon)
 {

@@ -79,8 +79,8 @@ int json_to_scene(json &jscene, Scene &s) {
       }
       s.objects.push_back(new Mesh(m, tris));
     } else {
-      std::cout << "*** unrecognized object type " << object["type"] << "\n";
-      return -1;
+      std::cout << "*** unrecognized object type " << object["type"] << ", skipping\n";
+      //return -1;
     }
   }
 
@@ -116,8 +116,8 @@ int json_to_scene(json &jscene, Scene &s) {
       float cutoff = light["cutoff"];
       s.lights.push_back(new SpotLight(colour, pos, direction, cutoff));
     } else {
-      std::cout << "*** unrecognized light type " << light["type"] << "\n";
-      return -1;
+      std::cout << "*** unrecognized light type " << light["type"] << ", skipping\n";
+      //return -1;
     }
   }
   
