@@ -195,11 +195,11 @@ std::pair<bool, colour3> trace(const point3& from, const point3& to, Object* exc
     {
 
         auto test = 1 - pow((1/best->material.refraction), 2) * (1 - pow(glm::dot(best_intersection - from, best_normal), 2));
-        if (best->material.refraction != 0.0f && test >= 0.0f)
+        if (best->material.refraction != 0.0f && test < 0.0f)
         {
             if (pick)
             {
-                std::cout << "full reflection instead of refraction" << std::endl;
+                std::cout << "total internal reflection" << std::endl;
             }
             out_colour += std::get<1>(reflection);
             do_refraction = false;
